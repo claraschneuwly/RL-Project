@@ -1,7 +1,7 @@
 import numpy as np
 
 class Env:
-    def __init__(self, x_goal, y_goal, max_x, min_x, max_y, min_y, max_z, dist_threshold=0.1, max_steps=200):
+    def __init__(self, x_goal, y_goal, dist_threshold=0.1, max_steps=200):
         # assume constant speed
         self.max_steps = max_steps
         self.dist_threshold = dist_threshold
