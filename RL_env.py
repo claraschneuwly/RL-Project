@@ -5,33 +5,30 @@ class Env:
         # assume constant speed
         self.max_steps = max_steps
         self.dist_threshold = dist_threshold
-        self.max_x, self.min_x = max_x, min_x # agent has drifted too far, admit defeat
-        self.max_y, self.min_y = max_y, min_y # agent has drifted too far, admit defeat
-        self.max_z = max_z
+        self.max_x, self.min_x = abs(x_goal) * 5 , - abs(x_goal) * 5  # agent has drifted too far, admit defeat
+        self.max_y, self.min_y = abs(y_goal) * 5 , - abs(y_goal) * 5 # agent has drifted too far, admit defeat
+        self.max_z = 100 # is this even useful ??
         self.x_goal, self.y_goal, self.z_goal = x_goal, y_goal, 0 # coordinates of goal
         self.rudder = 1/2 # Neutral position. can take values in np.arange(-1,1,0.25)
         self.orientation = 0  # Facing North (0 degrees)
-        self.x = 0
-        self.y = 0
-        self.z = 0
+        self.x, self.y, self.z = 0, 0, 0
         self.done = False
         self.goal_reached = False
         self.steps_count = 0
         self.sum_reward = 0
         self.all_actions = []
-        self.coords = [self.x, self.y, self.z, self.rudder]
+        self.coords = [self.x, self.y, self.z, self.rudder, self.orientation]
 
     def reset(self):
         self.rudder = 0.5
         self.orientation = 0  # Facing North (0 degrees)
-        self.x = 0
-        self.y = 0
-        self.z = 0
+        self.speed = 1
+        self.x, self.y, self.z = 0, 0, 0
         self.done = False
         self.goal_reached = False
         self.steps_count = 0
         self.sum_reward = 0
-        self.coords = [self.x, self.y, self.z, self.rudder]
+        self.coords = [self.x, self.y, self.z, self.rudder, self.orientation]
         return self.coords
     
     def admit_defeat(self, x, y):
@@ -57,10 +54,10 @@ class Env:
 
         # Calculate movement based on new orientation
         radians = np.radians(self.orientation)
-        change = (round(np.cos(radians)), round(np.sin(radians)))
+        change = (round(np.sin(radians)), round(np.cos(radians)))
 
-        self.x += change[0]
-        self.y += change[1]
+        self.x += change[0] #* self.speed
+        self.y += change[1] #* self.speed
 
         self.rudder = self.action
 
@@ -104,7 +101,7 @@ class Env:
         """Visualize the current state, will do later"""
         pass
         
-test_agent = Env(x_goal=3, y_goal=3, max_x=10, min_x=-10, max_y=10, min_y=-10, max_z=1, max_steps=10)
+test_agent = Env(x_goal=3, y_goal=3, max_steps=10)
 
 
 # Do simple tests to check if code works 
