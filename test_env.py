@@ -1,6 +1,6 @@
 from RL_env import *
 
-env = Env(x_goal=2, y_goal=2, max_x=10, min_x=-10, max_y=10, min_y=-10, max_z=1, max_steps=10)
+env = Env(x_goal=2, y_goal=2, max_steps=10)
 print(env.coords)
 # take user input for the action
 action = float(input("Enter action:"))
