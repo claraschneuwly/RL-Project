@@ -60,12 +60,12 @@ def run_q_learning(env, agent, episodes):
     return history_reward, history_success
 
 # Setup the environment
-env = Env(x_goal=2, y_goal=2, max_x=10, min_x=-10, max_y=10, min_y=-10, max_z=1, max_steps=100)
+env = Env(x_goal=2, y_goal=2, max_steps=100)
 actions = [0, 1/4, 1/2, 3/4, 1]
 agent = QLearning()
 
 # Run the Q-learning algorithm
-history_reward, history_success = run_q_learning(env, agent, episodes=5)
+history_reward, history_success = run_q_learning(env, agent, episodes=200)
 
 #print(f"Total reward = {history_reward}")
 print(f"Success : {history_success}")
