@@ -9,25 +9,23 @@ class Env:
         self.max_y, self.min_y = abs(y_goal) * 5 , - abs(y_goal) * 5 # agent has drifted too far, admit defeat
         self.max_z = 100 # is this even useful ??
         self.x_goal, self.y_goal, self.z_goal = x_goal, y_goal, 0 # coordinates of goal
-        self.rudder = 1/2 # Neutral position. can take values in np.arange(-1,1,0.25)
+        self.rudder = 0 # Neutral position. can take values in -90 to 90 degres
         self.orientation = 0  # Facing North (0 degrees)
         self.x, self.y, self.z = 0, 0, 0
         self.done = False
         self.goal_reached = False
         self.steps_count = 0
-        self.sum_reward = 0
         self.all_actions = []
         self.coords = [self.x, self.y, self.z, self.rudder, self.orientation]
 
     def reset(self):
-        self.rudder = 0.5
+        self.rudder = 0
         self.orientation = 0  # Facing North (0 degrees)
         self.speed = 1
         self.x, self.y, self.z = 0, 0, 0
         self.done = False
         self.goal_reached = False
         self.steps_count = 0
-        self.sum_reward = 0
         self.coords = [self.x, self.y, self.z, self.rudder, self.orientation]
         return self.coords
     
@@ -46,8 +44,9 @@ class Env:
         
     def take_action(self):
         """Update coordinates of agent based on angle of rudder"""
-        angle_changes = {0: 90, 0.25: 45, 0.5: 0, 0.75: -45, 1: -90}
-        angle_change = angle_changes[self.action]
+        # angle_changes = {0: 90, 0.25: 45, 0.5: 0, 0.75: -45, 1: -90}
+        # angle_change = angle_changes[self.action]
+        angle_change = self.action
 
         # Update orientation
         self.orientation = (self.orientation + angle_change) % 360
@@ -82,7 +81,6 @@ class Env:
         """
         self.action = action
         self.reward = self.get_reward()
-        self.sum_reward += self.reward
         self.coords = self.take_action()
         self.steps_count += 1
         self.all_actions += [action]
@@ -90,12 +88,12 @@ class Env:
         if self.success(self.x, self.y, self.z):
             self.done = True
             self.goal_reached = True
-            return self.coords, self.reward, self.sum_reward, self.done, self.steps_count, self.all_actions
+            return self.coords, self.reward, self.done, self.steps_count, self.all_actions
         elif self.admit_defeat(self.x, self.y) or self.steps_count > self.max_steps:
             self.done = True
-            return self.coords, self.reward, self.sum_reward, self.done, self.steps_count, self.all_actions
+            return self.coords, self.reward, self.done, self.steps_count, self.all_actions
 
-        return self.coords, self.reward, self.sum_reward, self.done, self.steps_count, self.all_actions
+        return self.coords, self.reward, self.done, self.steps_count, self.all_actions
     
     def visualise(self):
         """Visualize the current state, will do later"""
