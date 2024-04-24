@@ -66,6 +66,14 @@ class Agent :
         self.u_history = []
         self.v_history = []
 
+    def reset(self):
+        self.pos = np.array([0,0,0])
+        self.theta = 0
+        self.vel = np.array([0, 0, 0]).astype(np.float32)
+        self.thrust = 0 # [0; 1]
+        self.rudder = 0 # [-pi/4; pi/4]
+        self.action = np.array([0, 0])
+
     def inertia(self, lag = 5) :
 
         if len(self.u_history) > 0 :
