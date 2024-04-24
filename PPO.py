@@ -50,7 +50,7 @@ def collect_experiences(env, model, num_steps):
     for i in range(num_steps):
         dist, value = model([state])
         ###########################
-        action = dist.sample()
+        action = dist.sample() # Probleme ici. je comprends pas comment on définit la distribution
         print(action)
         
         next_state, reward, done, _, info = env.step(action.item())
