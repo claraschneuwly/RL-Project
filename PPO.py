@@ -1,63 +1,61 @@
 """## Train Agent"""
-from FinalEnv import *
+#from FinalEnv import *
+from DiscreteEnv import *
 import torch
 import torch.nn as nn
 import torch.distributions as dist
+import torch.nn.functional as F
+import random
+from tqdm import tqdm
+import matplotlib.pyplot as plt
+import pandas as pd
+random.seed(123)
 
 class ACModel(nn.Module):
     def __init__(self, state_dim, hidden_size=64):
         super(ACModel, self).__init__()
-        # Common hidden layer
-        self.common = nn.Sequential(
+        self.actor = nn.Sequential(
             nn.Linear(state_dim, hidden_size),
-            nn.ReLU()
-        )
-        # Actor - Output parameters for the distributions
-        self.actor_thrust = nn.Linear(hidden_size, 2)  # Parameters for Beta distribution (alpha, beta)
-        self.actor_rudder = nn.Linear(hidden_size, 2)  # Parameters for Gaussian distribution (mean, std_dev)
-        # Critic
-        self.critic = nn.Sequential(
-            nn.Linear(state_dim, hidden_size),
+            nn.ReLU(), 
+            nn.Linear(hidden_size, hidden_size),
             nn.ReLU(),
-            nn.Linear(hidden_size, 1)
+            nn.Linear(hidden_size, 1),
         )
 
+        # self.actor = nn.Sequential(
+        #         nn.Linear(state_dim, 64),
+        #         nn.Tanh(),
+        #         nn.Linear(64, 64),
+        #         nn.Tanh(),
+        #         nn.Linear(64, 1),
+        #         nn.Tanh()
+        #     )
+
+        # self.critic = nn.Sequential(
+        #     nn.Linear(state_dim, hidden_size),
+        #     nn.ReLU(), 
+        #     nn.Linear(hidden_size, 1)
+        # )
+
+        self.critic = nn.Sequential(
+                nn.Linear(state_dim, hidden_size),
+                nn.ReLU(),
+                nn.Linear(hidden_size, hidden_size),
+                nn.ReLU(),
+                nn.Linear(hidden_size, 1)
+            )
+        self.a_log_std = nn.Parameter(torch.zeros(1, 1))
+        
     def forward(self, state):
-        x = self.common(state)
-        # Thrust
-        thrust_params = torch.exp(self.actor_thrust(x))  # Ensure parameters are positive
-        thrust_dist = dist.Beta(thrust_params[:, 0]+1, thrust_params[:, 1]+1)  # Adding 1 to avoid 0
-        # Rudder
-        rudder_params = torch.exp(self.actor_rudder(x))
-        rudder_dist = dist.Beta(rudder_params[:, 0]+1, rudder_params[:, 1]+1)
-
-        # Compute value
+        mean = self.actor(state)
+        log_std = self.a_log_std.expand_as(mean)
+        std = torch.exp(log_std)
+        #print(self.actor[4].weight)
+        #mean = 90 * torch.tanh(self.actor(state)) # Scale the output to -90 to 90 rang
+        rudder_dist = dist.Normal(mean, std)
         value = self.critic(state)
-        return thrust_dist, self.rescale_beta(rudder_dist, -np.pi/4, np.pi/4), value
 
-    def rescale_beta(self, beta_dist, low, high):
-        """
-        Rescale a Beta distribution to a new interval [low, high].
-        """
-        def sample_rescaled(*args, **kwargs):
-            samples = beta_dist.sample(*args, **kwargs)
-            return low + (high - low) * samples
-
-        def log_prob_rescaled(samples):
-            # Adjust samples to original Beta scale
-            original_samples = (samples - low) / (high - low)
-            # Compute log_prob on the original scale, adjust for the scale transformation
-            return beta_dist.log_prob(original_samples) - torch.log(torch.tensor(high - low))
-        def entropy_rescaled():
-            scale = high - low
-            return beta_dist.entropy() + torch.log(torch.tensor(scale, dtype=torch.float))
-
-        # Return a simple object with adjusted sample, log_prob, and entropy methods
-        return type('RescaledBeta', (object,), {
-            'sample': sample_rescaled,
-            'log_prob': log_prob_rescaled,
-            'entropy': entropy_rescaled
-        })
+        return rudder_dist, value
 
 class Config:
     def __init__(self,
@@ -66,11 +64,11 @@ class Config:
                 lr=1e-3,
                 max_grad_norm=0.5,
                 log_interval=10,
-                max_episodes=500,
+                max_episodes=1000,
                 gae_lambda=0.95,
                 use_critic=False,
                 clip_ratio=0.2,
-                target_kl=0.01,
+                target_kl=0.02,
                 train_ac_iters=5,
                 use_discounted_reward=False,
                 entropy_coef=0.01,
@@ -95,7 +93,6 @@ def compute_discounted_return(rewards, discount, device=None):
     """
 		rewards: reward obtained at timestep.  Shape: (T,)
 		discount: discount factor. float
-
     ----
     returns: sum of discounted rewards. Shape: (T,)
 		"""
@@ -116,9 +113,7 @@ def compute_advantage_gae(values, rewards, T, gae_lambda, discount):
     T: the number of frames, float
     gae_lambda: hyperparameter, float
     discount: discount factor, float
-
     -----
-
     returns:
 
     advantages : tensor.float. Shape [T,]
@@ -152,14 +147,13 @@ def collect_experiences(env, acmodel, args, device=None):
     MAX_FRAMES_PER_EP = 300
     shape = (MAX_FRAMES_PER_EP, )
 
-    actions = torch.zeros((MAX_FRAMES_PER_EP, 2), device=device, dtype=torch.int)
+    actions = torch.zeros((MAX_FRAMES_PER_EP, 1), device=device, dtype=torch.int)
     values = torch.zeros(*shape, device=device)
     rewards = torch.zeros(*shape, device=device)
     log_probs = torch.zeros(*shape, device=device)
-    #obss = [None]*MAX_FRAMES_PER_EP
-    obss = torch.zeros((MAX_FRAMES_PER_EP, 3), device=device)
+    obss = torch.zeros((MAX_FRAMES_PER_EP, env.state_dim), device=device)
 
-    obs = env.reset()
+    obs = np.array(env.reset())
 
     total_return = 0
 
@@ -167,24 +161,28 @@ def collect_experiences(env, acmodel, args, device=None):
 
     while True:
         # Do one agent-environment interaction
-        print(env.pos, env.theta)
+        #print(env.coords)
 
         with torch.no_grad():
             obs = torch.from_numpy(obs).float()
             obs = obs.unsqueeze(0)
-            thrust_dist, rudder_dist, value = acmodel(obs)
-        action = torch.stack((thrust_dist.sample(), rudder_dist.sample()), dim=-1).squeeze()
-        #print(action)
+            #thrust_dist, rudder_dist, value = acmodel(obs)
+            rudder_dist, value = acmodel(obs)
+        # print('\n')
+        # print('obs', obs)
+        action = rudder_dist.sample().squeeze()
+        # print('action', action)
         obss[T] = obs
-        obs, reward,  _, done, _, _ = env.step(action)
+        obs, reward, done, _, _ = env.step(action)
+        # print('next obs', obs)
 
         # Update experiences values
         actions[T] = action
         values[T] = value
         rewards[T] = reward
-        #print(thrust_dist.log_prob(action[0]) + rudder_dist.log_prob(action[1]))
-        log_probs[T] = thrust_dist.log_prob(action[0]) + rudder_dist.log_prob(action[1])
 
+        log_probs[T] = rudder_dist.log_prob(action).squeeze().squeeze()
+        # print('log_probs', rudder_dist.log_prob(action).squeeze().squeeze())
         total_return += reward
         T += 1
 
@@ -227,7 +225,7 @@ def run_experiment(args, parameter_update, env_param, seed=0):
     torch.manual_seed(seed)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    env = FluidMechanicsEnv(**env_param)
+    env = Env(**env_param)
 
     acmodel = ACModel(env.state_dim)
     acmodel.to(device)
@@ -240,7 +238,7 @@ def run_experiment(args, parameter_update, env_param, seed=0):
 
     optimizer = torch.optim.Adam(acmodel.parameters(), lr=args.lr)
     num_frames = 0
-
+    
     pbar = tqdm(range(args.max_episodes))
     for update in pbar:
         exps, logs1 = collect_experiences(env, acmodel, args, device)
@@ -272,7 +270,7 @@ def run_experiment(args, parameter_update, env_param, seed=0):
     if is_solved:
         print('Solved!')
 
-    return pd.DataFrame(pd_logs).set_index('episode')
+    return pd.DataFrame(pd_logs).set_index('episode'), exps
 
 def update_parameters_ppo(optimizer, acmodel, sb, args):
     def _compute_policy_loss_ppo(obs, old_logp, actions, advantages):
@@ -292,17 +290,16 @@ def update_parameters_ppo(optimizer, acmodel, sb, args):
         '''
         policy_loss, approx_kl = 0, 0
 
-        ### TODO: implement PPO policy loss computation (30 pts).  #######
-
         # Policy loss
         T = len(obs)
         eps = args.clip_ratio
-        thrust_dist, rudder_dist, _ = acmodel(obs)
-        #print(actions)
-        #print(thrust_dist.log_prob(actions[:,0]))
-        logp = thrust_dist.log_prob(actions[:,0]) + rudder_dist.log_prob(actions[:,1])
-        #print(actions)
-        #print(logp)
+        rudder_dist, _ = acmodel(obs)
+
+        #print(actions[:,0])
+        # print("actions", actions)
+        logp = rudder_dist.log_prob(actions)
+        #print(torch.exp(logp).sum())
+        #print(old_logp)
 
         for t in range(T):
             if advantages[t] >= 0:
@@ -313,33 +310,30 @@ def update_parameters_ppo(optimizer, acmodel, sb, args):
             policy_loss -= torch.min(g, logp[t].exp()/old_logp[t].exp()*advantages[t])
 
         # Add entropy
-        entropy = thrust_dist.entropy() + rudder_dist.entropy()
+        entropy = rudder_dist.entropy()
         policy_loss -= args.entropy_coef*entropy.sum()
 
-        # Normlaize
+        # Normlaizes
         policy_loss = policy_loss/T
-
         # KL oldprobs / new probs
         for t in range(T):
-          r = logp[t].exp()/old_logp[t].exp()
+          r = (logp[t] -old_logp[t]).exp() # Division by zero 
+          #print("logp: ", logp[t])
+          #print("old_logp: ", old_logp[t])
           approx_kl += (r-1) - r.log()
 
-        ##################################################################
 
         return policy_loss, approx_kl
 
     def _compute_value_loss(obs, returns):
-        ### TODO: implement PPO value loss computation (10 pts) ##########
 
-        _, _, values = acmodel(obs)
+        _, values = acmodel(obs)
         value_loss = F.mse_loss(values.squeeze(),returns)
-        ##################################################################
 
         return value_loss
 
-    #print(sb['obs'])
-    thrust_dist, rudder_dist, _ = acmodel(sb['obs'])
-    old_logp = thrust_dist.log_prob(sb['action'][:,0]).detach() + rudder_dist.log_prob(sb['action'][:,1]).detach()
+    rudder_dist, _ = acmodel(sb['obs'])
+    old_logp = rudder_dist.log_prob(sb['action']).detach()
 
     advantage = sb['advantage_gae'] if args.use_gae else sb['advantage']
 
@@ -352,7 +346,9 @@ def update_parameters_ppo(optimizer, acmodel, sb, args):
         loss_v = _compute_value_loss(sb['obs'], sb['discounted_reward'])
 
         loss = loss_v + loss_pi
-        if approx_kl > 1.5 * args.target_kl:
+        #print(approx_kl)
+        #print(args.target_kl)
+        if approx_kl > args.target_kl:
             break
 
         loss.backward(retain_graph=True)
@@ -368,26 +364,28 @@ def update_parameters_ppo(optimizer, acmodel, sb, args):
 
     return logs
 
-env_param = dict(
-    a=0,
-    T=1,
-    k=0.1,
-    Ux=0,
-    Uy=0,
-    alpha=1,
-    sigma=0,
-    x_goal=1,
-    y_goal=1,
-    pos0=np.array([0, 0, 0]),
-    theta0=0,
-    dist_threshold=0.1,
-    max_steps=1000,
-)
-
-#print(env.state_dim)
+env_param = dict(x_goal=2, y_goal=2, max_steps=1000)
 
 args = Config(use_critic=True, use_gae=True)
-df_ppo = run_experiment(args, update_parameters_ppo, env_param)
-#df_ppo.plot(x='num_frames', y=['reward', 'smooth_reward'])
+df_ppo, exps = run_experiment(args, update_parameters_ppo, env_param)
+
+
+x = exps['obs'][:, 0]
+y = exps['obs'][:, 1]
+x_goal = 2
+y_goal = 2
+
+plt.figure(figsize=(8, 6))
+plt.plot(x, y, marker='o')  # Plot points with markers
+for i, (x_i, y_i) in enumerate(zip(x, y)):
+    plt.text(x_i, y_i, str(i), fontsize=12, ha='right')  # Annotate each point with its index
+
+plt.scatter(x_goal, y_goal, color='red', s=100, edgecolor='black', label='Goal Point')  # s is the size of the marker
+
+plt.title('Evolution of Position in 2D Space')
+plt.xlabel('X Position')
+plt.ylabel('Y Position')
+plt.grid(True)
+plt.show()
 
 
