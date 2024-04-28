@@ -1,4 +1,4 @@
-from RL_env import *
+from DiscreteEnv import *
 from FluidMechanics import *
 
 test = int(input("Enter 0 to test FluidMechanics, 1 to test DiscreteEnv:"))
@@ -25,12 +25,12 @@ else:
     # take user input for the action
     action = float(input("Enter action:"))
 
-    coords, _, sum_reward, done, steps_count, actions = env.step(action)
+    coords, _, done, steps_count, actions = env.step(action)
     print(env.coords)
     # repeat until agent is done
     while not done:
         action = float(input("Enter action:"))
-        coords, _, sum_reward, done, steps_count, actions = env.step(action)
+        coords, _, done, steps_count, actions = env.step(action)
         if env.goal_reached:
             print("Success! goal reached by agent")
         print(env.coords)
