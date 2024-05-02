@@ -1,10 +1,48 @@
+seed = 0
 import numpy as np
 import random
+import math
 from tqdm.notebook import tqdm
 import pandas as pd
+import torch
 import torch.nn.functional as F
+torch.manual_seed(seed)
+np.random.seed(seed)
+random.seed(seed)
 
 """## Fluid Environment"""
+
+def angle_between_vectors(v1, v2):
+    dot_product = v1[0] * v2[0] + v1[1] * v2[1]
+    magnitude_v1 = math.sqrt(v1[0]**2 + v1[1]**2)
+    magnitude_v2 = math.sqrt(v2[0]**2 + v2[1]**2)
+
+    if magnitude_v1 != 0 and magnitude_v2 != 0:
+        cos_theta = dot_product / (magnitude_v1 * magnitude_v2)
+        if cos_theta > 1:
+                cos_theta = 1
+        elif cos_theta < -1:
+            cos_theta = -1
+        angle_radians = math.acos(cos_theta)
+        return angle_radians
+    else:
+        return 0
+
+def normalize_vector_from_point(x, y, x0, y0):
+    # Calcul des composantes du vecteur
+    vector_x = x - x0
+    vector_y = y - y0
+
+    # Calcul de la magnitude
+    magnitude = math.sqrt(vector_x**2 + vector_y**2)
+
+    # Normalisation
+    if magnitude != 0:
+        normalized_x = vector_x / magnitude
+        normalized_y = vector_y / magnitude
+        return (normalized_x, normalized_y)
+    else:
+        return (0, 0)
 
 class FluidMechanicsEnv:
 
@@ -31,6 +69,7 @@ class FluidMechanicsEnv:
         self.max_x, self.min_x = 100 , -100  # agent has drifted too far, admit defeat
         self.max_y, self.min_y = 100 , -100 # agent has drifted too far, admit defeat
         self.x_goal, self.y_goal, self.z_goal = x_goal, y_goal, 0 # coordinates of goal
+        self.dir_goal = normalize_vector_from_point(self.x_goal, self.y_goal, 0, 0)
         self.done = False
         self.goal_reached = False
         self.steps_count = 0
@@ -45,8 +84,15 @@ class FluidMechanicsEnv:
         self.u_history = []
         self.v_history = []
 
-        self.state_dim = 3  # x, y, z. Should add later u_swell, u_wind, v_wind, w_swell
+        self.state_dim = 6  # x, y, z. Should add later u_swell, u_wind, v_wind, w_swell
         self.action_dim = 2  # thrust, rudder angle
+        self.max_action = torch.tensor([1, np.pi/4])
+
+        self.action_space_high = np.array([1, np.pi/4])  # Upper bounds for each action dimension
+        self.action_space_low = np.array([0, -np.pi/4])
+    
+    def action_space_sample(self):
+        return np.random.uniform(self.action_space_low, self.action_space_high)
 
     def water_surface_level(self, pos) :
         x, _, _ = pos
@@ -87,20 +133,37 @@ class FluidMechanicsEnv:
         # Sets agent action
         self.thrust = action[0]
         self.rudder = action[1]
+        #print(self.thrust)
+
+        ## new action categorical
+        '''
+        if action == 0:
+            self.rudder = 0
+        elif action == 1:
+            self.rudder = -np.pi/4
+        elif action == 2:
+            self.rudder = np.pi/4
+
+        self.thrust = 0.5
+        '''
 
         # Find the water velocity at agent position
         x, y, z = self.pos
         u, v, w = self.water_speed(self.pos)
-        self.vel = np.array([u, v, w])
+        #print([u, v, w])
+        #self.vel = np.array([u, v, w])
 
         # Add inertia to the agent's velocity
         self.vel += self.inertia()
 
         # Perform agent action
-        self.theta -= self.rudder # Update agent's orientation from rudder angle
+        self.theta += self.rudder
+        self.theta %= (2*np.pi) # Update agent's orientation from rudder angle
         u_action = self.thrust * np.sin(self.theta)
         v_action = self.thrust * np.cos(self.theta)
-        self.vel += np.array([u_action, v_action, 0])
+        self.vel = np.array([u_action, v_action, 0])
+        #print("theta", self.theta)
+        #print("vitesse", [u_action, v_action])
 
         # Update velocity history
         self.u_history.append(u)
@@ -109,7 +172,9 @@ class FluidMechanicsEnv:
         # Update agent position
         x += self.vel[0]
         y += self.vel[1]
+        #print("new pos", [x, y])
         z = self.water_surface_level((x, y, z))
+        self.dir_goal = normalize_vector_from_point(self.x_goal, self.y_goal, x, y)
 
         return np.array([x, y, z])
 
@@ -118,10 +183,11 @@ class FluidMechanicsEnv:
         # Calculate euclidian dist to goal Without z coord
         goal_pos = np.array([self.x_goal, self.y_goal])
         dist_to_goal = np.linalg.norm(np.array(self.pos[:2]) - goal_pos)
-        reward = - dist_to_goal
+        dist_to_dir = angle_between_vectors(self.dir_goal, (np.sin(self.theta), np.cos(self.theta)))/np.pi
+        ##reward = - (dist_to_goal/100 + np.float64(dist_to_dir))/50
+        reward = - (dist_to_goal/5000 + (np.exp((1 + np.float64(dist_to_dir))) - 1)/200)
         if dist_to_goal <= self.dist_threshold:
             reward += 10
-
         return reward
 
     def success(self):
@@ -155,7 +221,7 @@ class FluidMechanicsEnv:
         elif self.admit_defeat() or self.steps_count > self.max_steps:
             self.done = True
 
-        return self.pos, self.reward, self.sum_reward, self.done, self.steps_count, self.all_actions
+        return np.concatenate((self.pos, np.array([self.theta]), np.array([self.x_goal, self.y_goal]))), self.reward, self.sum_reward, self.done, self.steps_count, self.all_actions
 
     def reset(self):
 
@@ -166,8 +232,10 @@ class FluidMechanicsEnv:
         self.goal_reached = False
         self.steps_count = 0
         self.sum_reward = 0
+        self.theta = 0
+        self.dir_goal = normalize_vector_from_point(self.x_goal, self.y_goal, 0, 0)
 
-        return self.pos
+        return np.concatenate((self.pos, np.array([self.theta]), np.array([self.x_goal, self.y_goal])))
 
 env = FluidMechanicsEnv(a=0,
                         T=1,
@@ -176,22 +244,17 @@ env = FluidMechanicsEnv(a=0,
                         Uy=0,
                         alpha=1,
                         sigma=0,
-                        x_goal=1,
-                        y_goal=1,
+                        x_goal=4,
+                        y_goal=4,
                         pos0=np.array([0, 0, 0]),
                         theta0=0,
-                        dist_threshold=0.1,
-                        max_steps=1000)
-
-### Test the environment
+                        dist_threshold=0.2,
+                        max_steps=200)
 
 # action = np.array([1, -np.pi/4])
 # env.step(action)
-# print(env.pos, env.theta)
 
-# action = np.array([.4, 0])
+# action = np.array(0)
 # env.step(action)
-# print(env.pos, env.theta)
 
 # env.reset()
-# print(env.pos, env.theta)
