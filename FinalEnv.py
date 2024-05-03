@@ -185,7 +185,7 @@ class FluidMechanicsEnv:
         dist_to_goal = np.linalg.norm(np.array(self.pos[:2]) - goal_pos)
         dist_to_dir = angle_between_vectors(self.dir_goal, (np.sin(self.theta), np.cos(self.theta)))/np.pi
         ##reward = - (dist_to_goal/100 + np.float64(dist_to_dir))/50
-        reward = - (dist_to_goal/5000 + (np.exp((1 + np.float64(dist_to_dir))) - 1)/200)
+        reward = - (dist_to_goal/(self.x_goal*1250)+ (np.exp((1 + np.float64(dist_to_dir))) - 1)/(50*self.x_goal))
         if dist_to_goal <= self.dist_threshold:
             reward += 10
         return reward
