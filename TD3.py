@@ -103,7 +103,6 @@ class TD3(object):
 
 		# Sample replay buffer 
 		state, action, next_state, reward, not_done = replay_buffer.sample(batch_size)
-		print("action from buffer ", action)
 
 		with torch.no_grad():
 			# Select action according to policy and add clipped noise
@@ -114,7 +113,6 @@ class TD3(object):
 			next_action = (
 				self.actor_target(next_state) + noise
 			).clamp(-self.max_action, self.max_action)
-			print("action from policy", next_action)
 
 			# Compute the target Q value
 			target_Q1, target_Q2 = self.critic_target(next_state, next_action)

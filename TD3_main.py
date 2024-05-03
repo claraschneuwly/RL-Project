@@ -2,7 +2,7 @@ import numpy as np
 import torch
 import matplotlib.pyplot as plt
 
-import ReplayBuffer
+import ReplayBuffer_TD3
 import TD3
 from FinalEnv import *
 
@@ -75,7 +75,7 @@ if __name__ == "__main__":
 	kwargs["policy_freq"] = args.policy_freq
 	policy = TD3.TD3(**kwargs)
 
-	replay_buffer = ReplayBuffer.ReplayBuffer(state_dim, action_dim)
+	replay_buffer = ReplayBuffer_TD3.ReplayBuffer(state_dim, action_dim)
 
 	state, done = env.reset(), False
 	episode_reward = 0
@@ -90,14 +90,12 @@ if __name__ == "__main__":
 		# Select action randomly or according to policy
 		if t < args.start_timesteps:
 			action = env.action_space_sample()
-			print("action random ",action)
 
 		else:
 			action = (
 				policy.select_action(np.array(state))
 				+ np.random.normal(0, max_action * args.expl_noise, size=action_dim)
 			).clip(-max_action, max_action)
-			print("action ",action)
 
 		# Perform action
 		next_state, reward, _, done, _, _ = env.step(action)

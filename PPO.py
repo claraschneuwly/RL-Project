@@ -50,7 +50,7 @@ class ACModel(nn.Module):
         mean = self.actor(state)
         log_std = self.a_log_std.expand_as(mean)
         std = torch.exp(log_std)
-        #print(self.actor[4].weight)
+        #print(self.actor[-1].weight)
         #mean = 90 * torch.tanh(self.actor(state)) # Scale the output to -90 to 90 rang
         rudder_dist = dist.Normal(mean, std)
         value = self.critic(state)
@@ -64,7 +64,7 @@ class Config:
                 lr=1e-3,
                 max_grad_norm=0.5,
                 log_interval=10,
-                max_episodes=1000,
+                max_episodes=100,
                 gae_lambda=0.95,
                 use_critic=False,
                 clip_ratio=0.2,
@@ -288,6 +288,7 @@ def update_parameters_ppo(optimizer, acmodel, sb, args):
         policy_loss : ppo policy loss as shown in line 6 of PPO alg. tensor.float. Shape (,1)
         approx_kl: an appoximation of the kl_divergence. tensor.float. Shape (,1)
         '''
+        # lambda = 0.95, 0.97 worth change : lr, newtork itself and beta 
         policy_loss, approx_kl = 0, 0
 
         # Policy loss
@@ -301,27 +302,39 @@ def update_parameters_ppo(optimizer, acmodel, sb, args):
         #print(torch.exp(logp).sum())
         #print(old_logp)
 
-        for t in range(T):
-            if advantages[t] >= 0:
-              g = (1+eps)*advantages[t]
-            else:
-              g = (1-eps)*advantages[t]
+        # for t in range(T):
+        #     if advantages[t] >= 0:
+        #       g = (1+eps)*advantages[t]
+        #     else:
+        #       g = (1-eps)*advantages[t]
 
-            policy_loss -= torch.min(g, logp[t].exp()/old_logp[t].exp()*advantages[t])
+        #     policy_loss -= torch.min(g, logp[t].exp()/old_logp[t].exp()*advantages[t])
 
         # Add entropy
         entropy = rudder_dist.entropy()
-        policy_loss -= args.entropy_coef*entropy.sum()
+        # policy_loss -= args.entropy_coef*entropy.sum()
 
         # Normlaizes
+        
+        logratio = logp[:T] - old_logp[:T]
+        ratio = logratio.exp()
+
+        with torch.no_grad():
+                    # calculate approx_kl http://joschu.net/blog/kl-approx.html
+                    old_approx_kl = (-logratio).mean()
+                    approx_kl = ((ratio - 1) - logratio).mean()
+
+        pg_loss1 = advantages[:T] * ratio
+        pg_loss2 = -advantages[:T] * torch.clamp(ratio, 1 - eps, 1 + eps)
+        policy_loss = torch.max(pg_loss1, pg_loss2).mean()
+        policy_loss -= args.entropy_coef*entropy.sum()
         policy_loss = policy_loss/T
         # KL oldprobs / new probs
-        for t in range(T):
-          r = (logp[t] -old_logp[t]).exp() # Division by zero 
-          #print("logp: ", logp[t])
-          #print("old_logp: ", old_logp[t])
-          approx_kl += (r-1) - r.log()
-
+        # for t in range(T):
+        #   r = (logp[t] -old_logp[t]).exp() # Division by zero 
+        #   #print("logp: ", logp[t])
+        #   #print("old_logp: ", old_logp[t])
+        #   approx_kl = (r-1) - r.log()
 
         return policy_loss, approx_kl
 
@@ -346,13 +359,13 @@ def update_parameters_ppo(optimizer, acmodel, sb, args):
         loss_v = _compute_value_loss(sb['obs'], sb['discounted_reward'])
 
         loss = loss_v + loss_pi
-        #print(approx_kl)
-        #print(args.target_kl)
-        if approx_kl > args.target_kl:
-            break
-
-        loss.backward(retain_graph=True)
+        loss.backward() # retain_graph=True
         optimizer.step()
+        #print(approx_kl) # check requires gard == true
+        #print(args.target_kl)
+        if approx_kl > 1.5 * args.target_kl:
+            print(i)
+            break # ###
 
     update_policy_loss = policy_loss.item()
     update_value_loss = value_loss.item()
@@ -364,7 +377,7 @@ def update_parameters_ppo(optimizer, acmodel, sb, args):
 
     return logs
 
-env_param = dict(x_goal=2, y_goal=2, max_steps=1000)
+env_param = dict(x_goal=2, y_goal=2, max_steps=100)
 
 args = Config(use_critic=True, use_gae=True)
 df_ppo, exps = run_experiment(args, update_parameters_ppo, env_param)
@@ -372,12 +385,17 @@ df_ppo, exps = run_experiment(args, update_parameters_ppo, env_param)
 
 x = exps['obs'][:, 0]
 y = exps['obs'][:, 1]
+angles_ = exps['obs'][:, 3]
 x_goal = 2
 y_goal = 2
 
 plt.figure(figsize=(8, 6))
 plt.plot(x, y, marker='o')  # Plot points with markers
-for i, (x_i, y_i) in enumerate(zip(x, y)):
+for i, (x_i, y_i, angle) in enumerate(zip(x, y, angles_)):
+    vector_length = 1
+    dx = vector_length * np.sin(angle)
+    dy = vector_length * np.cos(angle)
+    plt.quiver(x_i, y_i, dx, dy, angles='xy', scale_units='xy', scale=1, color='red', headwidth = 3, alpha = 0.5 , label='Vectors')
     plt.text(x_i, y_i, str(i), fontsize=12, ha='right')  # Annotate each point with its index
 
 plt.scatter(x_goal, y_goal, color='red', s=100, edgecolor='black', label='Goal Point')  # s is the size of the marker
