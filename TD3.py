@@ -4,7 +4,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Implementation of Twin Delayed Deep Deterministic Policy Gradients (TD3)
@@ -19,7 +18,6 @@ class Actor(nn.Module):
 		self.l3 = nn.Linear(256, action_dim)
 		
 		self.max_action = max_action 
-		
 
 	def forward(self, state):
 		a = F.relu(self.l1(state))
@@ -105,6 +103,7 @@ class TD3(object):
 
 		# Sample replay buffer 
 		state, action, next_state, reward, not_done = replay_buffer.sample(batch_size)
+		print("action from buffer ", action)
 
 		with torch.no_grad():
 			# Select action according to policy and add clipped noise
@@ -115,6 +114,7 @@ class TD3(object):
 			next_action = (
 				self.actor_target(next_state) + noise
 			).clamp(-self.max_action, self.max_action)
+			print("action from policy", next_action)
 
 			# Compute the target Q value
 			target_Q1, target_Q2 = self.critic_target(next_state, next_action)
