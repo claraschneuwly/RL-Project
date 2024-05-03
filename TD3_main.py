@@ -4,7 +4,8 @@ import matplotlib.pyplot as plt
 
 import ReplayBuffer_TD3
 import TD3
-from FinalEnv import *
+#from FinalEnv import *
+from FinalEnv2 import *
 
 # Parameters for the environment
 env_param = dict(a=0, 
