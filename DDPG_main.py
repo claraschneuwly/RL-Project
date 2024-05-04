@@ -3,24 +3,23 @@ import torch
 import matplotlib.pyplot as plt
 
 import ReplayBuffer_TD3
-import TD3
-#from FinalEnv import *
+import DDPG
 from FinalEnv2 import *
 
 # Parameters for the environment
 env_param = dict(a=0, 
-                T=1, 
-                k=0.1, 
-                Ux=0, 
-                Uy=0, 
-                alpha=1, 
-                sigma=0, 
-                x_goal=4, 
-                y_goal=4, 
-                pos0=np.array([0, 0, 0]), 
-                theta0=0, 
-                dist_threshold=0.2, 
-                max_steps=200)
+				  T=1, 
+				  k=0.1, 
+				  Ux=0, 
+				  Uy=0, 
+				  alpha=1, 
+				  sigma=0, 
+				  x_goal=4, 
+				  y_goal=4, 
+				  pos0=np.array([0, 0, 0]), 
+				  theta0=0, 
+				  dist_threshold=0.2, 
+				  max_steps=200)
 
 # Define parameters for Twin Delayed Deep Deterministic
 class Config:
@@ -35,7 +34,7 @@ class Config:
                 start_timesteps=25e3,
                 batch_size=256,
                 seed=0):
-        
+		
         self.discount = discount # discount factor
         self.tau = tau # Target network update rate
         self.policy_noise = policy_noise # Noise added to target policy during critic update
@@ -48,7 +47,7 @@ class Config:
         self.seed = seed
 
 
-def run_TD3(seed=0):
+def run_DDPG(seed=0):	
     args = Config(seed=seed)
 
     env = FluidMechanicsEnv(**env_param)
@@ -69,12 +68,7 @@ def run_TD3(seed=0):
             "tau": args.tau}
 
     # Initialize policy
-
-    # Target policy smoothing is scaled wrt the action scale
-    kwargs["policy_noise"] = args.policy_noise * max_action
-    kwargs["noise_clip"] = args.noise_clip * max_action
-    kwargs["policy_freq"] = args.policy_freq
-    policy = TD3.TD3(**kwargs)
+    policy = DDPG.DDPG(**kwargs)
 
     replay_buffer = ReplayBuffer_TD3.ReplayBuffer(state_dim, action_dim)
 
@@ -117,14 +111,14 @@ def run_TD3(seed=0):
             print(f"Total T: {t+1} Episode Num: {episode_num+1} Episode T: {episode_timesteps} Reward: {episode_reward:.3f}")
             history_reward.append(episode_reward)
             smooth_reward.append(np.mean(history_reward[-SMOOTH_REWARD_WINDOW:]))
-            # if t+1 >= int(args.max_timesteps)-10: # Plot roughly the last 2 trajectories
+            # if episode_num >= 500: # Plot once the agent has learned enough
             #     x = replay_buffer.next_state[cumulative_episode_timesteps:cumulative_episode_timesteps+episode_timesteps, 0]
             #     y = replay_buffer.next_state[cumulative_episode_timesteps:cumulative_episode_timesteps+episode_timesteps, 1]
             #     theta = replay_buffer.next_state[cumulative_episode_timesteps:cumulative_episode_timesteps+episode_timesteps, 3]
             #     x = np.insert(x, 0, 0) # Add the first position (0,0,0) for the plot
             #     y = np.insert(y, 0, 0)
             #     theta = np.insert(theta, 0, 0)
-            #     fig = plt.figure(figsize = (14, 12))
+            #     fig = plt.figure(figsize = (10, 8))
             #     plt.grid(True)
             #     plt.scatter([env.x_goal], [env.y_goal], marker = "o", color = "r")
             #     plt.plot(x, y, 'k-o')
@@ -138,18 +132,20 @@ def run_TD3(seed=0):
             episode_num += 1		
     return smooth_reward
 
-#cumulative_rewards = [sum(history_reward[i:i+50]) for i in range(0, len(history_reward), 50)]
+#cumulative_rewards = [sum(history_reward[i:i+10]) for i in range(0, len(history_reward), 10)]
+
 def plot_reward(smooth_reward):
     # Plot cumulative rewards
     plt.figure(figsize=(10, 5))
     plt.plot(smooth_reward)
-    plt.title("Cumulative Rewards Over Time TD3")
+    plt.title("Cumulative Rewards Over Time DDPG")
     plt.xlabel("Episodes")
     plt.ylabel("Cumulative Reward")
     plt.grid(True)
     plt.show()
 
-#smooth_reward = run_TD3()
+#smooth_reward = run_DDPG()
 #plot_reward(smooth_reward)
+
 
 #Source: https://github.com/sfujim/TD3/blob/master/TD3.py

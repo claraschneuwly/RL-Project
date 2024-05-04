@@ -10,12 +10,12 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # Paper: https://arxiv.org/abs/1802.09477
 
 class Actor(nn.Module):
-	def __init__(self, state_dim, action_dim, max_action):
+	def __init__(self, state_dim, action_dim, max_action, hidden_dim=256):
 		super(Actor, self).__init__()
 
-		self.l1 = nn.Linear(state_dim, 256)
-		self.l2 = nn.Linear(256, 256)
-		self.l3 = nn.Linear(256, action_dim)
+		self.l1 = nn.Linear(state_dim, hidden_dim)
+		self.l2 = nn.Linear(hidden_dim, hidden_dim)
+		self.l3 = nn.Linear(hidden_dim, action_dim)
 		
 		self.max_action = max_action 
 
@@ -26,18 +26,20 @@ class Actor(nn.Module):
 
 
 class Critic(nn.Module):
-	def __init__(self, state_dim, action_dim):
+	def __init__(self, state_dim, action_dim, hidden_dim=256):
 		super(Critic, self).__init__()
-
+        # 2 sets of layers to produce 2 separate Q-value estimates (Q1 and Q2)
+		# --> helps mitigate overestimation bias 
+		
 		# Q1 architecture
-		self.l1 = nn.Linear(state_dim + action_dim, 256)
-		self.l2 = nn.Linear(256, 256)
-		self.l3 = nn.Linear(256, 1)
+		self.l1 = nn.Linear(state_dim + action_dim, hidden_dim)
+		self.l2 = nn.Linear(hidden_dim, hidden_dim)
+		self.l3 = nn.Linear(hidden_dim, 1)
 
 		# Q2 architecture
-		self.l4 = nn.Linear(state_dim + action_dim, 256)
-		self.l5 = nn.Linear(256, 256)
-		self.l6 = nn.Linear(256, 1)
+		self.l4 = nn.Linear(state_dim + action_dim, hidden_dim)
+		self.l5 = nn.Linear(hidden_dim, hidden_dim)
+		self.l6 = nn.Linear(hidden_dim, 1)
 
 
 	def forward(self, state, action):
@@ -147,22 +149,3 @@ class TD3(object):
 
 			for param, target_param in zip(self.actor.parameters(), self.actor_target.parameters()):
 				target_param.data.copy_(self.tau * param.data + (1 - self.tau) * target_param.data)
-
-
-	def save(self, filename):
-		torch.save(self.critic.state_dict(), filename + "_critic")
-		torch.save(self.critic_optimizer.state_dict(), filename + "_critic_optimizer")
-		
-		torch.save(self.actor.state_dict(), filename + "_actor")
-		torch.save(self.actor_optimizer.state_dict(), filename + "_actor_optimizer")
-
-
-	def load(self, filename):
-		self.critic.load_state_dict(torch.load(filename + "_critic"))
-		self.critic_optimizer.load_state_dict(torch.load(filename + "_critic_optimizer"))
-		self.critic_target = copy.deepcopy(self.critic)
-
-		self.actor.load_state_dict(torch.load(filename + "_actor"))
-		self.actor_optimizer.load_state_dict(torch.load(filename + "_actor_optimizer"))
-		self.actor_target = copy.deepcopy(self.actor)
-		
