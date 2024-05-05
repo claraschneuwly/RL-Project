@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 import matplotlib.pyplot as plt
+import time
 
 import ReplayBuffer_TD3
 import DDPG
@@ -48,6 +49,7 @@ class Config:
 
 
 def run_DDPG(seed=0):	
+    start_time = time.time()
     args = Config(seed=seed)
 
     env = FluidMechanicsEnv(**env_param)
@@ -130,7 +132,9 @@ def run_DDPG(seed=0):
             cumulative_episode_timesteps += episode_timesteps
             episode_timesteps = 0
             episode_num += 1		
-    return smooth_reward
+    end_time = time.time()
+    execution_time = end_time - start_time
+    return policy, t, episode_num, smooth_reward, execution_time
 
 #cumulative_rewards = [sum(history_reward[i:i+10]) for i in range(0, len(history_reward), 10)]
 
@@ -144,7 +148,7 @@ def plot_reward(smooth_reward):
     plt.grid(True)
     plt.show()
 
-#smooth_reward = run_DDPG()
+policy, t, episode_num, smooth_reward, execution_time = run_DDPG()
 #plot_reward(smooth_reward)
 
 
