@@ -16,8 +16,8 @@ class Config:
                 expl_noise=0.1,
                 noise_clip=0.5,
                 policy_freq=2,
-                max_timesteps=8e2,
-                start_timesteps=25e1,
+                max_timesteps=5e4,
+                start_timesteps=25e3,
                 batch_size=256,
                 seed=0):
         

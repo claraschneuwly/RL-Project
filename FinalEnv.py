@@ -182,8 +182,8 @@ class FluidMechanicsEnv:
         reward = - (dist_to_goal/(self.x_goal*1250) + (np.exp((1 + np.float64(dist_to_dir))) - 1)/(50*self.x_goal))
         if dist_to_goal <= self.dist_threshold:
             reward += 10
-        if self.straight and angle_between_vectors(self.dir_goal, (np.sin(self.theta), np.cos(self.theta))) >= self.alpha:
-            reward -= 0
+        # if self.straight and angle_between_vectors(self.dir_goal, (np.sin(self.theta), np.cos(self.theta))) >= self.alpha:
+        #     reward -= 0
         return reward
     
     def success(self):

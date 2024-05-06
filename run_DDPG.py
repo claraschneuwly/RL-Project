@@ -4,7 +4,7 @@ import DDPG_main
 import FinalEnv
 from utils import *
 
-env = FinalEnv.FluidMechanicsEnv(a=0.1, # range 0.1, 0.5, 1, 2, 5
+env = FinalEnv.FluidMechanicsEnv(a=0.5, # range 0.1, 0.5, 1, 2, 5
                         T=1, # wave period, range 10 to 20
                         k=0.1, #wave number m^-1: 0.05 to 0.5
                         Ux=0, #wind x component: -2 to 2
