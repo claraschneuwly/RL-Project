@@ -3,24 +3,9 @@ import torch
 import matplotlib.pyplot as plt
 import time
 
-import ReplayBuffer_TD3
+import ReplayBuffer
 import DDPG
-from FinalEnv2 import *
-
-# Parameters for the environment
-env_param = dict(a=0, 
-				  T=1, 
-				  k=0.1, 
-				  Ux=0, 
-				  Uy=0, 
-				  alpha=1, 
-				  sigma=0, 
-				  x_goal=4, 
-				  y_goal=4, 
-				  pos0=np.array([0, 0, 0]), 
-				  theta0=0, 
-				  dist_threshold=0.2, 
-				  max_steps=200)
+from FinalEnv import *
 
 # Define parameters for Twin Delayed Deep Deterministic
 class Config:
@@ -48,11 +33,9 @@ class Config:
         self.seed = seed
 
 
-def run_DDPG(seed=0):	
+def run_DDPG(env, kwargs, seed=0):	
     start_time = time.time()
     args = Config(seed=seed)
-
-    env = FluidMechanicsEnv(**env_param)
 
     # Set seeds
     torch.manual_seed(args.seed)
@@ -63,16 +46,10 @@ def run_DDPG(seed=0):
     action_dim = env.action_dim
     max_action = env.max_action
 
-    kwargs={"state_dim": state_dim,
-            "action_dim": action_dim,
-            "max_action": max_action,
-            "discount": args.discount,
-            "tau": args.tau}
-
     # Initialize policy
     policy = DDPG.DDPG(**kwargs)
 
-    replay_buffer = ReplayBuffer_TD3.ReplayBuffer(state_dim, action_dim)
+    replay_buffer = ReplayBuffer.ReplayBuffer(state_dim, action_dim)
 
     state, done = env.reset(), False
     episode_reward = 0
@@ -136,19 +113,28 @@ def run_DDPG(seed=0):
     execution_time = end_time - start_time
     return policy, t, episode_num, smooth_reward, execution_time
 
-#cumulative_rewards = [sum(history_reward[i:i+10]) for i in range(0, len(history_reward), 10)]
 
-def plot_reward(smooth_reward):
-    # Plot cumulative rewards
-    plt.figure(figsize=(10, 5))
-    plt.plot(smooth_reward)
-    plt.title("Cumulative Rewards Over Time DDPG")
-    plt.xlabel("Episodes")
-    plt.ylabel("Cumulative Reward")
-    plt.grid(True)
-    plt.show()
 
-policy, t, episode_num, smooth_reward, execution_time = run_DDPG()
+# Parameters for the environment
+# env_param = dict(a=0.1, # range 0.1, 0.5, 1, 2, 5
+#                         T=1, # wave period, range 10 to 20
+#                         k=0.1, #wave number m^-1: 0.05 to 0.5
+#                         Ux=0, #wind x component: -2 to 2
+#                         Uy=0, 
+#                         alpha=1, # vertical wind decay: around 1
+#                         sigma=0, # noise wind parameter: around 10% wind speed
+#                         x_goal=4, 
+#                         y_goal=4, 
+#                         pos0=np.array([0, 0, 0]), 
+#                         theta0=0,
+#                         dist_threshold=0.2, 
+#                         max_steps=200, 
+#                         ocean=True, # if false: still water env. If true: ocean like env
+#                         dt=1, # time step. For now keep 1, we could go smaller
+#                         max_thrust_speed = 1 # Robot's speed at 100% thrust 
+#                         )
+    
+# policy, t, episode_num, smooth_reward, execution_time = run_DDPG(env_param)
 #plot_reward(smooth_reward)
 
 
