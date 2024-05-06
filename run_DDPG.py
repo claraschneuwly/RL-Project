@@ -31,9 +31,12 @@ kwargs={"state_dim": env.state_dim,
         "tau": args.tau}
 
 #### Train and save the actor model
-policy, _, _, _, _ = DDPG_main.run_DDPG(env, kwargs, seed=0)
+policy, t, episode_num, smooth_reward, execution_time = DDPG_main.run_DDPG(env, kwargs, seed=0)
+print(f"Total steps: {t}, Num episodes: {episode_num}, execution_time : {execution_time}")
 torch.save(policy.actor.state_dict(), "DDPG_policy")
 
+#### Plot smooth reward
+plot_reward(smooth_reward)
 
 #### Load the actor model 
 model = DDPG.DDPG(**kwargs)

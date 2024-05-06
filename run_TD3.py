@@ -16,7 +16,7 @@ env = FinalEnv.FluidMechanicsEnv(a=0.1, # range 0.1, 0.5, 1, 2, 5
                         pos0=np.array([0, 0, 0]), 
                         theta0=0,
                         dist_threshold=0.2, 
-                        max_steps=200, 
+                        max_steps=2, 
                         ocean=True, # if false: still water env. If true: ocean like env
                         dt=1, # time step. For now keep 1, we could go smaller
                         max_thrust_speed = 1 # Robot's speed at 100% thrust 
@@ -34,9 +34,12 @@ kwargs["noise_clip"] = args.noise_clip * env.max_action
 kwargs["policy_freq"] = args.policy_freq
 
 #### Train and save the actor model
-policy, _, _, _, _ = TD3_main.run_TD3(env, kwargs, seed=0)
+policy, t, episode_num, smooth_reward, execution_time = TD3_main.run_TD3(env, kwargs, seed=0)
+print(f"Total steps: {t}, Num episodes: {episode_num}, execution_time : {execution_time}")
 torch.save(policy.actor.state_dict(), "TD3_policy")
 
+#### Plot smooth reward
+plot_reward(smooth_reward)
 
 #### Load the actor model 
 model = TD3.TD3(**kwargs)
