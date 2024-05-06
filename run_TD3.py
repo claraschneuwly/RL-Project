@@ -36,7 +36,7 @@ kwargs["policy_freq"] = args.policy_freq
 #### Train and save the actor model
 policy, t, episode_num, smooth_reward, execution_time = TD3_main.run_TD3(env, kwargs, seed=0)
 print(f"Total steps: {t}, Num episodes: {episode_num}, execution_time : {execution_time}")
-#torch.save(policy.actor.state_dict(), "TD3_policy")
+torch.save(policy.actor.state_dict(), "TD3_policy")
 
 #### Plot smooth reward
 plot_reward(smooth_reward)
