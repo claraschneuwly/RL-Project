@@ -3,7 +3,7 @@ import torch
 import matplotlib.pyplot as plt
 import time
 
-import ReplayBuffer
+from ReplayBuffer import ReplayBuffer
 import TD3
 from FinalEnv import *
 
