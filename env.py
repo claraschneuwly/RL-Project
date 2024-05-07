@@ -46,7 +46,7 @@ class FluidMechanicsEnv:
             self.a = a                  # Wave amplitude
             self.T = T                  # Wave period
             self.omega = 2 * np.pi / T  # Wave frequency
-            self.k = .1   
+            self.k = k   
 
     class Wind:
         def __init__(self, Ux, Uy, alpha, sigma) :
@@ -88,6 +88,7 @@ class FluidMechanicsEnv:
         self.action_dim = 2  # thrust, rudder angle
         self.dt = dt
         self.max_thrust_speed = max_thrust_speed
+        self.init_dist = np.linalg.norm(np.array(self.pos[:2]) - np.array([self.x_goal, self.y_goal]))
 
         if self.ocean:
             self.observation_space = spaces.Box(low=-100, high=100, shape=(9,), dtype=np.float32)
@@ -172,15 +173,14 @@ class FluidMechanicsEnv:
         goal_pos = np.array([self.x_goal, self.y_goal])
         dist_to_goal = np.linalg.norm(np.array(self.pos[:2]) - goal_pos)
         dist_to_dir = angle_between_vectors(self.dir_goal, (np.sin(self.theta), np.cos(self.theta)))/np.pi
-        ##reward = - (dist_to_goal/100 + np.float64(dist_to_dir))/50
+        
+        reward = 0
+        reward -= (dist_to_goal)/(self.max_steps*self.init_dist)
+        reward -= (np.exp((np.float64(dist_to_dir))) - 1)/self.max_steps
 
-        #TODO: write parametrize reward function based on reward position
-
-        reward = - (dist_to_goal/5000 + (np.exp((1 + np.float64(dist_to_dir))) - 1)/200)
         if dist_to_goal <= self.dist_threshold:
             reward += 10
-        if self.straight and angle_between_vectors(self.dir_goal, (np.sin(self.theta), np.cos(self.theta))) >= self.alpha:
-            reward -= 0
+        
         return reward
     
     def success(self):
