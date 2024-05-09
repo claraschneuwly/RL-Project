@@ -58,7 +58,6 @@ def run_TD3(env, kwargs, seed=0):
     history_reward = []  # store rewards to plot cumulative rewards
     smooth_reward = []
     SMOOTH_REWARD_WINDOW = 50
-    converged = False
     for t in range(int(args.max_timesteps)):
         
         episode_timesteps += 1
@@ -91,10 +90,10 @@ def run_TD3(env, kwargs, seed=0):
             history_reward.append(episode_reward)
             temp_smooth_reward = np.mean(history_reward[-SMOOTH_REWARD_WINDOW:])
             smooth_reward.append(temp_smooth_reward)
-            if not converged and temp_smooth_reward >= 9.8:
-                print(f"Number of steps to converge = {t+1}")
-                converged_steps = t+1
-                return converged_steps
+            # if not converged and temp_smooth_reward >= 9.8:
+            #     print(f"Number of steps to converge = {t+1}")
+            #     converged_steps = t+1
+            #     return converged_steps
             # if t+1 >= int(args.max_timesteps)-10: # Plot roughly the last 2 trajectories
             #     x = replay_buffer.next_state[cumulative_episode_timesteps:cumulative_episode_timesteps+episode_timesteps, 0]
             #     y = replay_buffer.next_state[cumulative_episode_timesteps:cumulative_episode_timesteps+episode_timesteps, 1]
@@ -117,9 +116,7 @@ def run_TD3(env, kwargs, seed=0):
             episode_num += 1		
     end_time = time.time()
     execution_time = end_time - start_time
-    #return policy, t, episode_num, smooth_reward, execution_time#, converged_steps
-    return None
-
+    return policy, t, episode_num, smooth_reward, execution_time
 
 
 # Parameters for the environment
