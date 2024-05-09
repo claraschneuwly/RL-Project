@@ -61,9 +61,9 @@ def plot_reward(smooth_reward):
     # Plot cumulative rewards
     plt.figure(figsize=(10, 5))
     plt.plot(smooth_reward)
-    plt.title("Cumulative Rewards Over Time")
-    plt.xlabel("Episodes")
-    plt.ylabel("Cumulative Reward")
+    #plt.title("Cumulative Rewards Over Time")
+    #plt.xlabel("Episodes")
+    #plt.ylabel("Cumulative Reward")
     plt.grid(True)
     plt.show()
 

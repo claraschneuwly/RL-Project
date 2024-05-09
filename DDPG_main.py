@@ -16,8 +16,8 @@ class Config:
                 expl_noise=0.1,
                 noise_clip=0.5,
                 policy_freq=2,
-                max_timesteps=8e4,
-                start_timesteps=25e3,
+                max_timesteps=1e5,
+                start_timesteps=4e4,
                 batch_size=256,
                 seed=0):
 		
@@ -67,12 +67,14 @@ def run_DDPG(env, kwargs, seed=0):
         # Select action randomly or according to policy
         if t < args.start_timesteps:
             action = env.action_space_sample()
+            #print("random: ", action)
 
         else:
             action = (
                 policy.select_action(np.array(state))
                 + np.random.normal(0, max_action * args.expl_noise, size=action_dim)
             ).clip(-max_action, max_action)
+            #print("policy: ", action)
 
         # Perform action
         next_state, reward, _, done, _, _ = env.step(action)
@@ -90,7 +92,7 @@ def run_DDPG(env, kwargs, seed=0):
             print(f"Total T: {t+1} Episode Num: {episode_num+1} Episode T: {episode_timesteps} Reward: {episode_reward:.3f}")
             history_reward.append(episode_reward)
             smooth_reward.append(np.mean(history_reward[-SMOOTH_REWARD_WINDOW:]))
-            # if episode_num >= 500: # Plot once the agent has learned enough
+            # if episode_num >= 600: # Plot once the agent has learned enough
             #     x = replay_buffer.next_state[cumulative_episode_timesteps:cumulative_episode_timesteps+episode_timesteps, 0]
             #     y = replay_buffer.next_state[cumulative_episode_timesteps:cumulative_episode_timesteps+episode_timesteps, 1]
             #     theta = replay_buffer.next_state[cumulative_episode_timesteps:cumulative_episode_timesteps+episode_timesteps, 3]

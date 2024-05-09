@@ -95,6 +95,7 @@ class FluidMechanicsEnv:
         self.max_action = torch.tensor([self.max_thrust_speed, np.pi/4])
         self.action_space_high = np.array([self.max_thrust_speed, np.pi/4])  # Upper bounds for each action dimension
         self.action_space_low = np.array([0, -np.pi/4])
+        self.init_dist = np.linalg.norm(np.array(self.pos[:2]) - np.array([self.x_goal, self.y_goal]))
 
     def water_surface_level(self, pos) :
         x, _, _ = pos
@@ -175,16 +176,30 @@ class FluidMechanicsEnv:
         goal_pos = np.array([self.x_goal, self.y_goal])
         dist_to_goal = np.linalg.norm(np.array(self.pos[:2]) - goal_pos)
         dist_to_dir = angle_between_vectors(self.dir_goal, (np.sin(self.theta), np.cos(self.theta)))/np.pi
-        ##reward = - (dist_to_goal/100 + np.float64(dist_to_dir))/50
 
-        #TODO: write parametrize reward function based on reward position
-
-        reward = - (dist_to_goal/(self.x_goal*1250) + (np.exp((1 + np.float64(dist_to_dir))) - 1)/(50*self.x_goal))
+        #reward = - (dist_to_goal/(self.x_goal*1250) + (np.exp(np.float64(dist_to_dir)) - 1)/(self.x_goal))
+        reward = - (dist_to_goal/(self.max_steps*self.init_dist) + (np.exp(np.float64(dist_to_dir)) - 1)/(self.max_steps))
         if dist_to_goal <= self.dist_threshold:
             reward += 10
         # if self.straight and angle_between_vectors(self.dir_goal, (np.sin(self.theta), np.cos(self.theta))) >= self.alpha:
         #     reward -= 0
         return reward
+    
+    # def get_reward(self):
+        
+    #     # Calculate euclidian dist to goal Without z coord
+    #     goal_pos = np.array([self.x_goal, self.y_goal])
+    #     dist_to_goal = np.linalg.norm(np.array(self.pos[:2]) - goal_pos)
+    #     dist_to_dir = angle_between_vectors(self.dir_goal, (np.sin(self.theta), np.cos(self.theta)))/np.pi
+        
+        # reward = 0
+        # reward -= (dist_to_goal)/(self.max_steps*self.init_dist)
+        # reward -= (np.exp((np.float64(dist_to_dir))) - 1)/self.max_steps
+
+    #     if dist_to_goal <= self.dist_threshold:
+    #         reward += 10
+        
+    #     return reward
     
     def success(self):
         """Returns True if x,y is near enough goal"""

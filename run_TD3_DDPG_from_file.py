@@ -1,8 +1,5 @@
-import torch
-import json
-import TD3
-import TD3_main
 import FinalEnv
+import torch
 from utils import *
 
 env = FinalEnv.FluidMechanicsEnv(a=0.5, # range 0.1, 0.5, 1, 2, 5
@@ -23,8 +20,13 @@ env = FinalEnv.FluidMechanicsEnv(a=0.5, # range 0.1, 0.5, 1, 2, 5
                         max_thrust_speed = 2 # Robot's speed at 100% thrust 
                         )
 
-args = TD3_main.Config()
+##################### TD3 
+import TD3
+import TD3_main
 
+env.reset()
+
+args = TD3_main.Config()
 kwargs={"state_dim": env.state_dim,
         "action_dim": env.action_dim,
         "max_action": env.max_action,
@@ -34,33 +36,42 @@ kwargs["policy_noise"] = args.policy_noise * env.max_action
 kwargs["noise_clip"] = args.noise_clip * env.max_action
 kwargs["policy_freq"] = args.policy_freq
 
-reward_dict = dict()
-#### Train and save the actor model
-for seed in range(2):
-        # env.wave.a = wave
-        model, t, episode_num, smooth_reward, execution_time = TD3_main.run_TD3(env, kwargs, seed=seed)
-        print(f"seed: {seed}, Total steps: {t}, Num episodes: {episode_num}, execution_time : {execution_time}")
-        # torch.save(policy.actor.state_dict(), "TD3_policy")
-        reward_dict[seed] = smooth_reward
+#### Load the actor model 
+model = TD3.TD3(**kwargs)
+policy = model.actor
 
-        # #### Plot smooth reward
-        plot_reward(smooth_reward)
+policy.load_state_dict(torch.load("TD3_seed0_wave05"))
+policy.eval()
 
-        # #### Load the actor model 
-        # model = TD3.TD3(**kwargs)
-        # policy = model.actor
+# Sample a trajectory 
+trajectory, total_reward = sample_trajectory(env, policy, env.max_steps)
 
-        if seed == 0:
-                torch.save(model.actor.state_dict(), "TD3_seed0_wave05")
-                # policy.load_state_dict(torch.load("TD3_policy"))
-                # policy.eval()
+print("Total reward from sampled trajectory:", total_reward)
+plot_trajectory(trajectory)
 
-                #### Sample a trajectory 
-                # trajectory, total_reward = sample_trajectory(env, policy, env.max_steps)
 
-                # print("Total reward from sampled trajectory:", total_reward)
-                # plot_trajectory(trajectory)
+############### DDPG 
+import DDPG
+import DDPG_main
 
-with open('TD3_05_rewards.txt', 'w') as convert_file: 
-     convert_file.write(json.dumps(reward_dict))
+env.reset()
 
+args = DDPG_main.Config()
+kwargs={"state_dim": env.state_dim,
+        "action_dim": env.action_dim,
+        "max_action": env.max_action,
+        "discount": args.discount,
+        "tau": args.tau}
+
+#### Load the actor model 
+model = DDPG.DDPG(**kwargs)
+policy = model.actor
+
+policy.load_state_dict(torch.load("DDPG_seed0_wave05"))
+policy.eval()
+
+# Sample a trajectory 
+trajectory, total_reward = sample_trajectory(env, policy, env.max_steps)
+
+print("Total reward from sampled trajectory:", total_reward)
+plot_trajectory(trajectory)

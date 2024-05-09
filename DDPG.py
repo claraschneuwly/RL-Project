@@ -14,9 +14,9 @@ class Actor(nn.Module):
 	def __init__(self, state_dim, action_dim, max_action):
 		super(Actor, self).__init__()
 
-		self.l1 = nn.Linear(state_dim, 400)
-		self.l2 = nn.Linear(400, 300)
-		self.l3 = nn.Linear(300, action_dim)
+		self.l1 = nn.Linear(state_dim, 256)
+		self.l2 = nn.Linear(256, 256)
+		self.l3 = nn.Linear(256, action_dim)
 		
 		self.max_action = max_action
 	
@@ -30,9 +30,9 @@ class Critic(nn.Module):
 	def __init__(self, state_dim, action_dim):
 		super(Critic, self).__init__()
 
-		self.l1 = nn.Linear(state_dim, 400)
-		self.l2 = nn.Linear(400 + action_dim, 300)
-		self.l3 = nn.Linear(300, 1)
+		self.l1 = nn.Linear(state_dim, 256)
+		self.l2 = nn.Linear(256 + action_dim, 256)
+		self.l3 = nn.Linear(256, 1)
 
 	def forward(self, state, action):
 		q = F.relu(self.l1(state))
@@ -48,10 +48,11 @@ class DDPG(object):
 
 		self.critic = Critic(state_dim, action_dim).to(device)
 		self.critic_target = copy.deepcopy(self.critic)
-		self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), weight_decay=1e-2)
+		self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), weight_decay=3e-3)
 
 		self.discount = discount
 		self.tau = tau
+		self.max_action = max_action
 
 
 	def select_action(self, state):
@@ -64,8 +65,15 @@ class DDPG(object):
 		state, action, next_state, reward, not_done = replay_buffer.sample(batch_size)
 
 		# Compute the target Q value
-		target_Q = self.critic_target(next_state, self.actor_target(next_state))
-		target_Q = reward + (not_done * self.discount * target_Q).detach()
+		# target_Q = self.critic_target(next_state, self.actor_target(next_state))
+		# target_Q = reward + (not_done * self.discount * target_Q).detach()
+		with torch.no_grad():
+			# Select action according to policy
+			next_action = self.actor_target(next_state).clamp(-self.max_action, self.max_action)
+
+			# Compute the target Q value
+			target_Q = self.critic_target(next_state, next_action)
+			target_Q = reward + not_done * self.discount * target_Q
 
 		# Get current Q estimate
 		current_Q = self.critic(state, action)

@@ -16,7 +16,7 @@ class Config:
                 expl_noise=0.1,
                 noise_clip=0.5,
                 policy_freq=2,
-                max_timesteps=5e4,
+                max_timesteps=1e5,
                 start_timesteps=25e3,
                 batch_size=256,
                 seed=0):
@@ -58,7 +58,7 @@ def run_TD3(env, kwargs, seed=0):
     history_reward = []  # store rewards to plot cumulative rewards
     smooth_reward = []
     SMOOTH_REWARD_WINDOW = 50
-
+    converged = False
     for t in range(int(args.max_timesteps)):
         
         episode_timesteps += 1
@@ -84,11 +84,17 @@ def run_TD3(env, kwargs, seed=0):
         # Train agent after collecting sufficient data
         if t >= args.start_timesteps:
             policy.train(replay_buffer, args.batch_size)
+            # print("policy: ", action)
         if done:
             # +1 to account for 0 indexing. +0 on ep_timesteps since it will increment +1 even if done=True
-            print(f"Total T: {t+1} Episode Num: {episode_num+1} Episode T: {episode_timesteps} Reward: {episode_reward:.3f}")
+            #print(f"Total T: {t+1} Episode Num: {episode_num+1} Episode T: {episode_timesteps} Reward: {episode_reward:.3f}")
             history_reward.append(episode_reward)
-            smooth_reward.append(np.mean(history_reward[-SMOOTH_REWARD_WINDOW:]))
+            temp_smooth_reward = np.mean(history_reward[-SMOOTH_REWARD_WINDOW:])
+            smooth_reward.append(temp_smooth_reward)
+            if not converged and temp_smooth_reward >= 9.8:
+                print(f"Number of steps to converge = {t+1}")
+                converged_steps = t+1
+                return converged_steps
             # if t+1 >= int(args.max_timesteps)-10: # Plot roughly the last 2 trajectories
             #     x = replay_buffer.next_state[cumulative_episode_timesteps:cumulative_episode_timesteps+episode_timesteps, 0]
             #     y = replay_buffer.next_state[cumulative_episode_timesteps:cumulative_episode_timesteps+episode_timesteps, 1]
@@ -101,7 +107,8 @@ def run_TD3(env, kwargs, seed=0):
             #     plt.scatter([env.x_goal], [env.y_goal], marker = "o", color = "r")
             #     plt.plot(x, y, 'k-o')
             #     plt.show()
-
+            # if episode_reward > 9.922:
+            #     print(replay_buffer.action[cumulative_episode_timesteps:cumulative_episode_timesteps+episode_timesteps])
             # Reset environment
             state, done = env.reset(), False
             episode_reward = 0
@@ -110,7 +117,8 @@ def run_TD3(env, kwargs, seed=0):
             episode_num += 1		
     end_time = time.time()
     execution_time = end_time - start_time
-    return policy, t, episode_num, smooth_reward, execution_time
+    #return policy, t, episode_num, smooth_reward, execution_time#, converged_steps
+    return None
 
 
 
