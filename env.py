@@ -5,6 +5,7 @@
 import numpy as np 
 import math
 from gym import spaces
+import torch
 
 def angle_between_vectors(v1, v2):
     dot_product = v1[0] * v2[0] + v1[1] * v2[1]
@@ -81,6 +82,8 @@ class FluidMechanicsEnv:
         self.straight = False
         self.alpha = 0.1
         self.ocean = ocean
+        self.phase = np.random.uniform(0, 2*np.pi)
+
         if self.ocean:
             self.state_dim = 9 # u_water, v_water
         else:
@@ -97,6 +100,11 @@ class FluidMechanicsEnv:
         
         self.action_space = spaces.Box(low=np.array([0, -np.pi/4]), high=np.array([max_thrust_speed, np.pi/4]), dtype=np.float32)
 
+        # Clara's init req
+        self.max_action = torch.tensor([self.max_thrust_speed, np.pi/4])
+        self.action_space_high = np.array([self.max_thrust_speed, np.pi/4])  # Upper bounds for each action dimension
+        self.action_space_low = np.array([0, -np.pi/4])
+
     def water_surface_level(self, pos) :
         x, _, _ = pos
         eta = self.wave.a * np.sin(self.wave.omega * self.t - self.wave.k * x)
@@ -106,8 +114,8 @@ class FluidMechanicsEnv:
         x, y, z = pos
         eta = self.water_surface_level(pos)
 
-        u_swell = self.wave.a * self.wave.omega * np.exp(self.wave.k * z) * np.sin(self.wave.omega * self.t - self.wave.k * x)
-        w_swell = self.wave.a * self.wave.omega * np.exp(self.wave.k * z) * np.cos(self.wave.omega * self.t - self.wave.k * x)
+        u_swell = self.wave.a * self.wave.omega * np.exp(self.wave.k * z) * np.sin(self.wave.omega * self.t - self.wave.k * x + self.phase)
+        w_swell = self.wave.a * self.wave.omega * np.exp(self.wave.k * z) * np.cos(self.wave.omega * self.t - self.wave.k * x+ self.phase)
         
         u_wind = np.random.normal(self.wind.Ux, self.wind.sigma) * np.exp(self.wind.alpha * (z-self.wave.a))
         v_wind = np.random.normal(self.wind.Uy, self.wind.sigma) * np.exp(self.wind.alpha * (z-self.wave.a))
@@ -130,6 +138,9 @@ class FluidMechanicsEnv:
             u, v = 0, 0
 
         return np.array([u, v, 0])
+    
+    def action_space_sample(self):
+        return np.random.uniform(self.action_space_low, self.action_space_high)
     
     def update_pos(self, action):
         # Sets agent action
@@ -239,6 +250,8 @@ class FluidMechanicsEnv:
         self.theta = np.random.uniform(0, 2*np.pi) # if statement false: self.theta = 0
         self.dir_goal = normalize_vector_from_point(self.x_goal, self.y_goal, 0, 0)
         self.straight = False
+
+        self.phase = np.random.uniform(0, 2*np.pi)
 
         if self.ocean: 
             # TODO: Add noise to observation if algo works fine with perfect estimate of wave and winds speed

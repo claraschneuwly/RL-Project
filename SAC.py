@@ -147,6 +147,7 @@ class SAC:
         smooth_reward = []
         SMOOTH_REWARD_WINDOW = 50
         length_ep = 0
+        converged = False
 
         for global_step in range(self.args.total_timesteps):
 
@@ -176,7 +177,12 @@ class SAC:
                     print('\n')
                 length_ep = 0
                 episode_reward = 0
-    
+                # if (not converged) and (smooth_reward[-1] >= 9.8):
+                #     converged=True
+                #     print(f'for wave.a = {self.env.wave.a}: nbr of episode to convergence {global_step + 1}')
+                #     print('\n')
+                #     return global_step + 1
+
 
             if global_step > self.args.learning_starts:
                 data = self.replay_buffer.sample(self.args.batch_size)
@@ -185,7 +191,6 @@ class SAC:
         execution_time = time.time() - start_time
 
         return self.actor, self.args.total_timesteps, episode_num, smooth_reward, execution_time
-
 
 
     def update_parameters(self, data, global_step):
