@@ -1,0 +1,6 @@
+# Exclude macOS system files
+.DS_Store
+
+# Exclude Python cache directories
+__pycache__/
+*.py[cod]
