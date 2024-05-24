@@ -6,6 +6,8 @@ from tqdm.notebook import tqdm
 import pandas as pd
 import torch
 import torch.nn.functional as F
+import gym
+print(gym.__version__)
 from gym import spaces
 
 torch.manual_seed(seed)
