@@ -70,18 +70,23 @@ class Args:
     print_reward: bool = True
     """print the smooth reward after each epoch during training"""
 
-# Seed everything for reproducibility
-args = Args()
-args.print_reward = True
-random.seed(args.seed)
-np.random.seed(args.seed)
-torch.manual_seed(args.seed)
-if args.cuda:
-    torch.backends.cudnn.deterministic = args.torch_deterministic
+reward_dict = dict()
+#### Train and save the actor model
+for seed in range(5):
+    # Seed everything for reproducibility
+    args = Args()
+    args.print_reward = True
+    random.seed(args.seed)
+    np.random.seed(args.seed)
+    torch.manual_seed(args.seed)
+    if args.cuda:
+        torch.backends.cudnn.deterministic = args.torch_deterministic
 
-# Create and train SAC agent
-sac_agent = SAC(env, args)
+    # Create and train SAC agent
+    sac_agent = SAC(env, args)
 
-policy, t, episode_num, smooth_reward, execution_time = sac_agent.train()
+    policy, t, episode_num, smooth_reward, execution_time = sac_agent.train()
 
-# plot_reward(smooth_reward)
+    reward_dict[seed] = smooth_reward
+
+    # plot_reward(smooth_reward)
