@@ -1,6 +1,6 @@
 """## Train Agent"""
 
-from FinalEnv import *
+from Env import *
 import torch
 import torch.nn as nn
 import torch.distributions as dist

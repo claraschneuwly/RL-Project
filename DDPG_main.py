@@ -5,7 +5,7 @@ import time
 
 import ReplayBuffer
 import DDPG
-from FinalEnv import *
+from Env import *
 
 # Define parameters for Twin Delayed Deep Deterministic
 class Config:
@@ -67,14 +67,12 @@ def run_DDPG(env, kwargs, seed=0):
         # Select action randomly or according to policy
         if t < args.start_timesteps:
             action = env.action_space_sample()
-            #print("random: ", action)
 
         else:
             action = (
                 policy.select_action(np.array(state))
                 + np.random.normal(0, max_action * args.expl_noise, size=action_dim)
             ).clip(-max_action, max_action)
-            #print("policy: ", action)
 
         # Perform action
         next_state, reward, _, done, _, _ = env.step(action)
@@ -92,18 +90,6 @@ def run_DDPG(env, kwargs, seed=0):
             print(f"Total T: {t+1} Episode Num: {episode_num+1} Episode T: {episode_timesteps} Reward: {episode_reward:.3f}")
             history_reward.append(episode_reward)
             smooth_reward.append(np.mean(history_reward[-SMOOTH_REWARD_WINDOW:]))
-            # if episode_num >= 600: # Plot once the agent has learned enough
-            #     x = replay_buffer.next_state[cumulative_episode_timesteps:cumulative_episode_timesteps+episode_timesteps, 0]
-            #     y = replay_buffer.next_state[cumulative_episode_timesteps:cumulative_episode_timesteps+episode_timesteps, 1]
-            #     theta = replay_buffer.next_state[cumulative_episode_timesteps:cumulative_episode_timesteps+episode_timesteps, 3]
-            #     x = np.insert(x, 0, 0) # Add the first position (0,0,0) for the plot
-            #     y = np.insert(y, 0, 0)
-            #     theta = np.insert(theta, 0, 0)
-            #     fig = plt.figure(figsize = (10, 8))
-            #     plt.grid(True)
-            #     plt.scatter([env.x_goal], [env.y_goal], marker = "o", color = "r")
-            #     plt.plot(x, y, 'k-o')
-            #     plt.show()
 
             # Reset environment
             state, done = env.reset(), False
@@ -117,27 +103,30 @@ def run_DDPG(env, kwargs, seed=0):
 
 
 
+
+##### Run DDPG
+
 # Parameters for the environment
-# env_param = dict(a=0.1, # range 0.1, 0.5, 1, 2, 5
-#                         T=1, # wave period, range 10 to 20
-#                         k=0.1, #wave number m^-1: 0.05 to 0.5
-#                         Ux=0, #wind x component: -2 to 2
-#                         Uy=0, 
-#                         alpha=1, # vertical wind decay: around 1
-#                         sigma=0, # noise wind parameter: around 10% wind speed
-#                         x_goal=4, 
-#                         y_goal=4, 
-#                         pos0=np.array([0, 0, 0]), 
-#                         theta0=0,
-#                         dist_threshold=0.2, 
-#                         max_steps=200, 
-#                         ocean=True, # if false: still water env. If true: ocean like env
-#                         dt=1, # time step. For now keep 1, we could go smaller
-#                         max_thrust_speed = 1 # Robot's speed at 100% thrust 
-#                         )
+# env_param = dict(a=0.5, # range 0.1, 0.5, 1, 2, 5
+                        # T=1, # wave period, range 10 to 20
+                        # k=0.1, #wave number m^-1: 0.05 to 0.5
+                        # Ux=1, #wind x component: -2 to 2
+                        # Uy=1, 
+                        # alpha=1, # vertical wind decay: around 1
+                        # sigma=0.1, # noise wind parameter: around 10% wind speed
+                        # x_goal=4, 
+                        # y_goal=4, 
+                        # pos0=np.array([0, 0, 0]), 
+                        # theta0=0,
+                        # dist_threshold=0.2, 
+                        # max_steps=200, 
+                        # ocean=True, # if false: still water env. If true: ocean like env
+                        # dt=1, # time step. For now keep 1, we could go smaller
+                        # max_thrust_speed = 5 # Robot's speed at 100% thrust 
+                        # )
     
-# policy, t, episode_num, smooth_reward, execution_time = run_DDPG(env_param)
-#plot_reward(smooth_reward)
+# model, t, episode_num, smooth_reward, execution_time = run_DDPG(env_param)
 
-
-#Source: https://github.com/sfujim/TD3/blob/master/TD3.py
+# Plot smooth reward curve
+# from utils import *
+# plot_reward(smooth_reward)

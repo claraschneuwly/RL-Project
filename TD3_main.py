@@ -5,7 +5,7 @@ import time
 
 import ReplayBuffer
 import TD3
-from FinalEnv import *
+from Env import *
 
 # Define parameters for Twin Delayed Deep Deterministic
 class Config:
@@ -83,31 +83,13 @@ def run_TD3(env, kwargs, seed=0):
         # Train agent after collecting sufficient data
         if t >= args.start_timesteps:
             policy.train(replay_buffer, args.batch_size)
-            # print("policy: ", action)
         if done:
             # +1 to account for 0 indexing. +0 on ep_timesteps since it will increment +1 even if done=True
-            #print(f"Total T: {t+1} Episode Num: {episode_num+1} Episode T: {episode_timesteps} Reward: {episode_reward:.3f}")
+            print(f"Total T: {t+1} Episode Num: {episode_num+1} Episode T: {episode_timesteps} Reward: {episode_reward:.3f}")
             history_reward.append(episode_reward)
             temp_smooth_reward = np.mean(history_reward[-SMOOTH_REWARD_WINDOW:])
             smooth_reward.append(temp_smooth_reward)
-            # if not converged and temp_smooth_reward >= 9.8:
-            #     print(f"Number of steps to converge = {t+1}")
-            #     converged_steps = t+1
-            #     return converged_steps
-            # if t+1 >= int(args.max_timesteps)-10: # Plot roughly the last 2 trajectories
-            #     x = replay_buffer.next_state[cumulative_episode_timesteps:cumulative_episode_timesteps+episode_timesteps, 0]
-            #     y = replay_buffer.next_state[cumulative_episode_timesteps:cumulative_episode_timesteps+episode_timesteps, 1]
-            #     theta = replay_buffer.next_state[cumulative_episode_timesteps:cumulative_episode_timesteps+episode_timesteps, 3]
-            #     x = np.insert(x, 0, 0) # Add the first position (0,0,0) for the plot
-            #     y = np.insert(y, 0, 0)
-            #     theta = np.insert(theta, 0, 0)
-            #     fig = plt.figure(figsize = (14, 12))
-            #     plt.grid(True)
-            #     plt.scatter([env.x_goal], [env.y_goal], marker = "o", color = "r")
-            #     plt.plot(x, y, 'k-o')
-            #     plt.show()
-            # if episode_reward > 9.922:
-            #     print(replay_buffer.action[cumulative_episode_timesteps:cumulative_episode_timesteps+episode_timesteps])
+
             # Reset environment
             state, done = env.reset(), False
             episode_reward = 0
@@ -119,26 +101,31 @@ def run_TD3(env, kwargs, seed=0):
     return policy, t, episode_num, smooth_reward, execution_time
 
 
+
+
+##### Run TD3
+
 # Parameters for the environment
-# env_param = dict(a=0.1, # range 0.1, 0.5, 1, 2, 5
-#                         T=1, # wave period, range 10 to 20
-#                         k=0.1, #wave number m^-1: 0.05 to 0.5
-#                         Ux=0, #wind x component: -2 to 2
-#                         Uy=0, 
-#                         alpha=1, # vertical wind decay: around 1
-#                         sigma=0, # noise wind parameter: around 10% wind speed
-#                         x_goal=4, 
-#                         y_goal=4, 
-#                         pos0=np.array([0, 0, 0]), 
-#                         theta0=0,
-#                         dist_threshold=0.2, 
-#                         max_steps=200, 
-#                         ocean=True, # if false: still water env. If true: ocean like env
-#                         dt=1, # time step. For now keep 1, we could go smaller
-#                         max_thrust_speed = 1 # Robot's speed at 100% thrust 
-#                         )
+# env_param = dict(a=0.5, # range 0.1, 0.5, 1, 2, 5
+                        # T=1, # wave period, range 10 to 20
+                        # k=0.1, #wave number m^-1: 0.05 to 0.5
+                        # Ux=1, #wind x component: -2 to 2
+                        # Uy=1, 
+                        # alpha=1, # vertical wind decay: around 1
+                        # sigma=0.1, # noise wind parameter: around 10% wind speed
+                        # x_goal=4, 
+                        # y_goal=4, 
+                        # pos0=np.array([0, 0, 0]), 
+                        # theta0=0,
+                        # dist_threshold=0.2, 
+                        # max_steps=200, 
+                        # ocean=True, # if false: still water env. If true: ocean like env
+                        # dt=1, # time step. For now keep 1, we could go smaller
+                        # max_thrust_speed = 5 # Robot's speed at 100% thrust 
+                        # )
+    
+# model, t, episode_num, smooth_reward, execution_time = run_DDPG(env_param)
 
-#policy, t, episode_num, smooth_reward, execution_time = run_TD3(env_param)
-#plot_reward(smooth_reward)
-
-#Source: https://github.com/sfujim/TD3/blob/master/TD3.py
+# Plot smooth reward curve
+# from utils import *
+# plot_reward(smooth_reward)

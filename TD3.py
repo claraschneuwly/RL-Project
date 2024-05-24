@@ -6,8 +6,8 @@ import torch.nn.functional as F
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-# Implementation of Twin Delayed Deep Deterministic Policy Gradients (TD3)
-# Paper: https://arxiv.org/abs/1802.09477
+# Twin Delayed Deep Deterministic Policy Gradients (TD3)
+
 
 class Actor(nn.Module):
 	def __init__(self, state_dim, action_dim, max_action, hidden_dim=256):
@@ -103,18 +103,14 @@ class TD3(object):
 	def train(self, replay_buffer, batch_size=256):
 		self.total_it += 1
 
-		# Sample replay buffer 
+		# Sample from replay buffer 
 		state, action, next_state, reward, not_done = replay_buffer.sample(batch_size)
 
 		with torch.no_grad():
 			# Select action according to policy and add clipped noise
-			noise = (
-				torch.randn_like(action) * self.policy_noise
-			).clamp(-self.noise_clip, self.noise_clip)
+			noise = (torch.randn_like(action) * self.policy_noise).clamp(-self.noise_clip, self.noise_clip)
 			
-			next_action = (
-				self.actor_target(next_state) + noise
-			).clamp(-self.max_action, self.max_action)
+			next_action = (self.actor_target(next_state) + noise).clamp(-self.max_action, self.max_action)
 
 			# Compute the target Q value
 			target_Q1, target_Q2 = self.critic_target(next_state, next_action)
@@ -149,3 +145,8 @@ class TD3(object):
 
 			for param, target_param in zip(self.actor.parameters(), self.actor_target.parameters()):
 				target_param.data.copy_(self.tau * param.data + (1 - self.tau) * target_param.data)
+
+
+
+# Paper: https://arxiv.org/abs/1802.09477
+# Sources for debugging: https://github.com/vwxyzjn/cleanrl and https://github.com/sfujim/TD3/tree/master

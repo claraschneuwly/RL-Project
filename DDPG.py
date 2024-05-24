@@ -6,9 +6,7 @@ import torch.nn.functional as F
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-# Implementation of Deep Deterministic Policy Gradients (DDPG)
-# Paper: https://arxiv.org/abs/1509.02971
-
+# Deep Deterministic Policy Gradients (DDPG)
 
 class Actor(nn.Module):
 	def __init__(self, state_dim, action_dim, max_action):
@@ -61,12 +59,10 @@ class DDPG(object):
 
 
 	def train(self, replay_buffer, batch_size=64):
-		# Sample replay buffer 
+		# Sample from replay buffer 
 		state, action, next_state, reward, not_done = replay_buffer.sample(batch_size)
 
 		# Compute the target Q value
-		# target_Q = self.critic_target(next_state, self.actor_target(next_state))
-		# target_Q = reward + (not_done * self.discount * target_Q).detach()
 		with torch.no_grad():
 			# Select action according to policy
 			next_action = self.actor_target(next_state).clamp(-self.max_action, self.max_action)
@@ -100,4 +96,9 @@ class DDPG(object):
 
 		for param, target_param in zip(self.actor.parameters(), self.actor_target.parameters()):
 			target_param.data.copy_(self.tau * param.data + (1 - self.tau) * target_param.data)
-		
+
+
+
+
+# Paper: https://arxiv.org/abs/1509.02971
+# Sources for debugging: https://github.com/vwxyzjn/cleanrl and https://github.com/sfujim/TD3/tree/master

@@ -7,26 +7,6 @@ import matplotlib.pyplot as plt
 
 from TD3_main import *
 
-################ Run different seeds
-#from DDPG_main import *
-
-# smooth_reward_TD3 = dict()
-# for seed in range(3):
-#     policy, t, episode_num, smooth_reward, execution_time = run_TD3(seed=seed)
-#     smooth_reward_TD3[seed] = smooth_reward
-
-# with open('TD3.txt', 'w') as convert_file: 
-#      convert_file.write(json.dumps(smooth_reward_TD3))
-
-# smooth_reward_DDPG = dict()
-# for seed in range(3):
-#     policy, t, episode_num, smooth_reward, execution_time = run_DDPG(seed=seed)
-#     smooth_reward_DDPG[seed] = smooth_reward
-
-# with open('DDPG.txt', 'w') as convert_file: 
-#      convert_file.write(json.dumps(smooth_reward_DDPG))
-##################
-
 def sample_trajectory(env, policy, max_steps):
     state = env.reset()
     done = False
@@ -37,13 +17,14 @@ def sample_trajectory(env, policy, max_steps):
         state = torch.FloatTensor(np.array(state).reshape(1, -1))
         action = policy(state).cpu().data.numpy().flatten()
         next_state, reward, _, done, _, _ = env.step(action)
-        trajectory.append((state, action, reward, next_state))
+        #trajectory.append((state, action, reward, next_state))
+        trajectory.append(np.array(state[0][:2]))
         state = next_state
         total_reward += reward
 
         if done:
             break
-
+    trajectory.append(np.array(np.array(next_state).reshape(1, -1)[0][:2]))
     return trajectory, total_reward
 
 def plot_trajectory(trajectory):
@@ -61,9 +42,9 @@ def plot_reward(smooth_reward):
     # Plot cumulative rewards
     plt.figure(figsize=(10, 5))
     plt.plot(smooth_reward)
-    #plt.title("Cumulative Rewards Over Time")
-    #plt.xlabel("Episodes")
-    #plt.ylabel("Cumulative Reward")
+    plt.title("Cumulative Rewards Over Time")
+    plt.xlabel("Episodes")
+    plt.ylabel("Cumulative Reward")
     plt.grid(True)
     plt.show()
 
@@ -80,7 +61,7 @@ def plot_reward_from_file(file_name, algo_name):
     # Calculate and plot the average of the curves
     lengths = [len(values) for values in rewards_dict.values()]
     min_length = min(lengths)
-    # Truncate arrays to the minimum lengthws
+    # Truncate arrays to the minimum lengths
     truncated_arrays = [np.array(values[:min_length]) for values in rewards_dict.values()]
     average_rewards = np.mean(truncated_arrays, axis=0)
     plt.plot(average_rewards, label='Average', color='black', linestyle='--', linewidth=2)
@@ -92,5 +73,6 @@ def plot_reward_from_file(file_name, algo_name):
     plt.legend()
     plt.show()
 
-#plot_curve("DDPG.txt", "DDPG")
-#plot_curve("TD3.txt", "TD3")
+
+# plot_curve("DDPG.txt", "DDPG")
+# plot_curve("TD3.txt", "TD3")
