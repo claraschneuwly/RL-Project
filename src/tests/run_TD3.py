@@ -1,9 +1,9 @@
 import torch
 import json
-import TD3
-import TD3_main
-import FinalEnv
-from utils import *
+import src.TD3
+import src.TD3_main
+import src.Env
+from src.utils import *
 
 env = FinalEnv.FluidMechanicsEnv(a=0.5, # range 0.1, 0.5, 1, 2, 5
                         T=10, # wave period, range 10 to 20
