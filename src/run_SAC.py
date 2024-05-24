@@ -9,9 +9,9 @@ import torch.nn.functional as F
 from gym import spaces
 import matplotlib.pyplot as plt
 from dataclasses import dataclass
-from src.Env import *
-from src.SAC import *
-from src.utils import *
+from Env import *
+from SAC import *
+from utils import *
 
 env_param = dict(a=0.5, 
                 T=10, 

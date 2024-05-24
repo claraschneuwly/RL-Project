@@ -10,7 +10,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import time
-import ReplayBuffer
+from ReplayBuffer import * 
 
 
 class SoftQNetwork(nn.Module):

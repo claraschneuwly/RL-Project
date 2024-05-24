@@ -1,10 +1,10 @@
 import torch
-import src.DDPG
-import src.DDPG_main
-import src.Env
-from src.utils import *
+import DDPG
+import DDPG_main
+import Env
+from utils import *
 
-env = FinalEnv.FluidMechanicsEnv(a=0.5, # range 0.1, 0.5, 1, 2, 5
+env = Env.FluidMechanicsEnv(a=0.5, # range 0.1, 0.5, 1, 2, 5
                         T=10, # wave period, range 10 to 20
                         k=0.1, #wave number m^-1: 0.05 to 0.5
                         Ux=1, #wind x component: -2 to 2
